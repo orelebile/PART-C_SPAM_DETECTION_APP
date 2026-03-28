@@ -1,63 +1,54 @@
-
 import streamlit as st
-import joblib
-import numpy as np
-import pandas as pd
+import pickle
+import re
+import string
 
-# Load trained model and scaler
-model = joblib.load("loan_risk_logistic_model.pkl")
-scaler = joblib.load("scaler.pkl")
-model_columns = joblib.load("model_columns.pkl")  # saved training columns
+# Define the text cleaning function (copied from previous cells for self-containment)
+def clean_text(text):
+    # Convert to lowercase
+    text = text.lower()
+    # Remove HTML tags
+    text = re.sub(r"<.*?>", "", text)
+    # Remove punctuation
+    text = text.translate(str.maketrans("", "", string.punctuation))
+    # Remove numbers
+    text = re.sub(r"\d+", "", text)
+    # Remove extra whitespace
+    return re.sub(r"\s+", " ", text).strip()
 
-st.title("Loan Risk Prediction App")
-st.write("Enter customer details to predict loan risk")
+# Load trained model and vectorizer
+try:
+    model = pickle.load(open('Spam Prediction Model.pkl', 'rb'))
+    vectorizer = pickle.load(open('Tfidf Vectorizer.pkl', 'rb'))
+except FileNotFoundError:
+    st.error("Error: Model or vectorizer files not found. Please ensure 'Spam Prediction Model.pkl' and 'Tfidf Vectorizer.pkl' are in the correct directory.")
+    st.stop() # Stop the app if files are missing
 
-# Numeric inputs
-income = st.number_input("Income")
-age = st.number_input("Age")
-experience = st.number_input("Experience (Years)")
-current_job_yrs = st.number_input("Current Job Years")
-current_house_yrs = st.number_input("Current House Years")
+# Define the prediction function 
+def predict_sentiment(review_text):
+    cleaned = clean_text(review_text)
+    vectorized = vectorizer.transform([cleaned])
+    prediction = model.predict(vectorized)[0]
 
-# Categorical inputs
-married = st.selectbox("Marital Status", ["single","married"])
-house = st.selectbox("House Ownership", ["rented","owned","norent_noown"])
-car = st.selectbox("Car Ownership", ["no","yes"])
-profession = st.text_input("Profession")
-city = st.text_input("City")
-state = st.text_input("State")
+    if prediction == 1:
+        return "Spam"
+    else:
+        return "NotSpam"
+
+st.title("Spam Email Classification App")
+
+st.write("Enter an email message to classify it as Spam or Not Spam.")
+
+# Text input for the email message
+email_message = st.text_area("Email Message", height=150)
 
 # Prediction button
-if st.button("Predict Loan Risk"):
-
-    # Create dataframe from inputs
-    input_data = pd.DataFrame({
-        'Income':[income],
-        'Age':[age],
-        'Experience':[experience],
-        'Married/Single':[married],
-        'House_Ownership':[house],
-        'Car_Ownership':[car],
-        'Profession':[profession],
-        'City':[city],
-        'State':[state],
-        'Current_Job_Yrs':[current_job_yrs],
-        'Current_House_Yrs':[current_house_yrs]
-    })
-
-    # One-hot encode categorical features
-    input_data = pd.get_dummies(input_data)
-
-    # Align input with training columns
-    input_data = input_data.reindex(columns=model_columns, fill_value=0)
-
-    # Scale features
-    input_scaled = scaler.transform(input_data)
-
-    # Predict
-    prediction = model.predict(input_scaled)
-
-    if prediction[0] == 1:
-        st.error("⚠️ High Loan Risk")
+if st.button("Classify Email"):
+    if email_message:
+        result = predict_sentiment(email_message)
+        if result == "Spam":
+            st.error(f"Prediction: {result}")
+        else:
+            st.success(f"Prediction: {result}")
     else:
-        st.success("✅ Low Loan Risk")
+        st.warning("Please enter an email message to classify.")
