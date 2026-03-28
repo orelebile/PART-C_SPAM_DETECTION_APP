@@ -1,5 +1,11 @@
 import streamlit as st
 import joblib
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import nltk
+from nltk.sentiment import SentimentIntensityAnalyzer
 
 # Load trained model and vectorizer
 model = joblib.load("spam_model.pkl")
